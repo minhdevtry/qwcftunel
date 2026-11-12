@@ -1,0 +1,14 @@
+# runtime tai lieu trong box - KHONG commit
+bin/
+logs/
+run/
+terminal.env
+heartbeat.txt
+__pycache__/
+*.pyc
+
+# phong khi co token/credential vo tinh roi xuong box
+.git-credentials
+*.pem
+*.key
+.env
