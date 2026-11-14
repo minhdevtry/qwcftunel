@@ -1,7 +1,7 @@
 # PROMPT — dán nguyên khối dưới vào phiên agent mới
 
 ```
-Nhiệm vụ DUY NHẤT: dựng web terminal + Cloudflare quick tunnel trong sandbox này rồi báo 3 dòng.
+Nhiệm vụ DUY NHẤT: dựng web terminal + Cloudflare quick tunnel trong sandbox này rồi báo 4 dòng.
 
 - Repo này CHỨA code đã kiểm chứng. KHÔNG sửa logic của keepalive.py / start-terminal.sh / verify.py.
 - KHÔNG cài thêm gì: không apt, không npm, không Claude Code, không relay, không model, không gateway.

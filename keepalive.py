@@ -5,7 +5,8 @@ Sua 2 loi cua v1:
      khi instance cu chua release port. v2: kiem tra "PORT do that su LISTEN", neu khong thi giem
      roi spawn lai, va khong spawn de lenh instance cu.
   2) v1 dem 'URL khong live' ca khi origin chang -> restart tunnel moi 40s -> doi URL lien tuc.
-     v2: chi danh gia URL khi origin port dang UP, threshold 5 lan + tunnel phai >= 90s tuoi.
+     v2: chi danh gia URL khi origin port dang UP, threshold 30 lan (~10 phut o HB=20s)
+     + tunnel phai >= 90s tuoi.
 """
 import json, os, re, signal, socket, subprocess, time, urllib.error, urllib.request
 
@@ -164,7 +165,13 @@ def main():
             reap()
             open(os.path.join(ROOT, "heartbeat.txt"), "w").write("tick=%d %d\n" % (tick, time.time()))
             ensure_ttyd("preview", prev, {})
-            up = ensure_ttyd("public", pub, {"TTYD_CREDENTIAL": cred}) or port_open(pub)
+            # Cong PUBLIC khong duoc bat voi mat khau rong/rong: "admin:" de doan
+            # -> shell mo cho tat ca. Thieu mat khau thi dung lai, bao loi ro.
+            if not c.get("TTYD_PASS"):
+                log("LOI: terminal.env thieu TTYD_PASS - KHONG bat ttyd public (tranh mo shell khong khoa)")
+                up = False
+            else:
+                up = ensure_ttyd("public", pub, {"TTYD_CREDENTIAL": cred}) or port_open(pub)
 
             tpid = pid_of("tunnel.log")
             if not alive(tpid):

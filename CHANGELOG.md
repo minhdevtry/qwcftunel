@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## v1.2 — 2026-11-14 (review tu repo qwenapi: harden credential + sua mo ta)
+
+| # | Bug | Cach phat hien | Fix | Ket qua do duoc |
+|---|---|---|---|---|
+| 16 | `start-terminal.sh` chay **cong public khong khoa** khi `TTYD_CREDENTIAL` rong, va `keepalive.py` tao credential `"admin:"` (mat khau RONG) khi `terminal.env` thieu `TTYD_PASS` ⇒ **shell root khong can mat khau** tren URL public | Doc code khi review cross-repo; `doctor.sh` KHONG bat duoc vi `/token` van 200 voi credential dung | `start-terminal.sh` **tu choi** credential co mat khau rong (`admin:`) → exit 1, khong bat ttyd; `keepalive.py` **khong spawn** ttyd public khi thieu `TTYD_PASS` (ghi loi ro) | Test voi `bin/ttyd` gia: `admin:` → **rc=1** + loi; credential hop le → ttyd chay; khong credential (preview noi bo) → van chay |
+| 17 | Docstring `keepalive.py` noi "threshold 5 lan" nhung code dung `fails >= 30` (~10 phut o `HB_EVERY=20`) | Doc ma nguon | Sua docstring cho dung voi code | — |
+| 18 | `PROMPT.md` tieu de noi "bao 3 dong" nhung buoc lenh noi "BAO CAO dung 4 dong" | Doc ma nguon | Sua tieu de → 4 dong | — |
+
+> Pham vi: repo nay CHI lo len quick tunnel (bootstrap + keepalive + verify + doctor).
+> Moi thay doi o day khong dua relay/model/gateway vao — phan do thuoc repo `qwenapi`.
+
 ## v1.1 — 2026-11-12 (sau khi review + test ky hon; da do truoc/sau)
 
 | # | Bug | Cach phat hien | Fix | Ket qua do duoc |
