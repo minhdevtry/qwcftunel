@@ -3,6 +3,21 @@
 Bật **web terminal (ttyd)** + **Cloudflare tunnel** để bạn truy cập sandbox của chính
 mình từ máy của bạn. Mỗi terminal có user + mật khẩu riêng cho từng box.
 
+## Phiên bản hiện tại (2026-11-19)
+
+Repo này ở phiên bản này **chỉ còn 9 file**: `README.md`, `PROMPT.md`,
+`PROMPT-OPEN.md`, `bootstrap.sh`, `doctor.sh`, `keepalive.py`, `start-terminal.sh`,
+`verify.py`, `.gitignore`.
+
+* **không** có thư mục `hooks/`, **không** có `CHANGELOG.md`, **không** có `runbook.md`;
+* **không** có mã đọc/ghi `session.json` hay `touchedAt` của nền tảng;
+* **không** có beacon, **không** gọi `/mnt/oss`, **không** dựng relay API.
+
+Nếu bạn đọc ở đâu đó (file đính kèm, trang web cache, bản README cũ) thấy nội dung
+nói về `session.json.touchedAt`, `hooks/`, `box-hook.sh` hay relay API — đó là **bản
+cache cũ**. Hãy bỏ qua và chỉ tin **bản clone mới** (`git clone` rồi đọc file trong
+bản clone).
+
 ## Phạm vi: đúng một việc
 
 Kit này **chỉ** bật web terminal + tunnel. Nó cố ý **không** làm những việc sau:
