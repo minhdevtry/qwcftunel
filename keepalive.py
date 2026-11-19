@@ -233,8 +233,33 @@ def url_ok(url, cred):
         return False
 
 
+def acquire_singleton_lock():
+    """Chỉ cho phép MỘT supervisor chạy.
+
+    Vì sao (đo 19/11/2026): agent thường chạy `bootstrap.sh` + `start_process` lặp
+    lại vài lần. Mỗi lần spawn thêm MỘT bộ đầy đủ (keepalive python + ttyd +
+    cloudflared quick tunnel ~48MB). 4-5 lần ⇒ +250-350MB ⇒ OOM trong container
+    1GB (API chết theo). ⇒ Bản thứ hai phải tự thoát ngay.
+    """
+    import fcntl
+    path = os.path.join(RUN, "keepalive.lock")
+    f = open(path, "w")
+    try:
+        fcntl.flock(f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        log("da co supervisor khac chay (khoa %s) - exit, khong giet tien trinh cu" % path)
+        return None
+    f.write("%d\n" % os.getpid())
+    f.flush()
+    return f  # giu file mo => lock giu suot vong doi
+
+
 def main():
     tick, fails, born = 0, 0, 0
+    # Khoa singleton: chi mot supervisor duoc chay (xem acquire_singleton_lock).
+    _lock = acquire_singleton_lock()
+    if _lock is None:
+        return
     # pid cua chinh supervisor (de agent dung va start lai duoc khi doi file)
     try:
         open(os.path.join(RUN, "keepalive.pid"), "w").write(str(os.getpid()))
