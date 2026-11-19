@@ -221,28 +221,7 @@ print("\n  heartbeat tuoi: %s" % ("%.0fs" % age if age is not None else "khong d
 if age is not None and age > 90:
     (notes if edge_up else problems).append("heartbeat %.0fs tuoi -> supervisor co the dung/chay cham" % age)
 
-# touchedAt = TIN HIEU platform doc tren DIA de quyet dinh recycle box.
-# Chi ghi heartbeat.txt CHUA DU: box van co the bi archive.
-try:
-    import glob as _glob
-    _best = None
-    for _r, _d, _fs in os.walk("/tmp/arena"):
-        if "session.json" in _fs and "/undo/" not in _r:
-            _p = os.path.join(_r, "session.json")
-            try:
-                if _best is None or os.path.getmtime(_p) > os.path.getmtime(_best):
-                    _best = _p
-            except OSError:
-                pass
-    if _best:
-        with open(_best) as _f:
-            _t = json.load(_f).get("touchedAt", 0)
-        _age = int(time.time() - int(_t) / 1000) if _t else None
-        print("  touchedAt tuoi: %s" % ("%.0fs" % _age if _age is not None else "khong doc duoc"))
-        if _age is not None and _age > 90:
-            problems.append("touchedAt %.0fs tuoi -> platform co the archive box (keepalive chua tick session.json)" % _age)
-except Exception:
-    pass
+
 
 h("KET LUAN")
 if problems:

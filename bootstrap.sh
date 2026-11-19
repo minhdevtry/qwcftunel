@@ -3,8 +3,7 @@
 # Dung:  ./bootstrap.sh            # giu mat khau hien tai
 #        ./bootstrap.sh --new-pass # GHI DE terminal.env: mat khau moi + chon lai cong trong
 # Ket qua: bin/ttyd, bin/cloudflared, terminal.env (chmod 600), logs/, run/
-# Mat khau: neu co terminal-pass.env (TERMINAL_PASS) -> dung mat khau CO DINH do (may local
-#           tu dang nhap duoc moi box). Khong co file -> sinh ngau nien nhu cu.
+# Mat khau: moi box mot mat khau rieng, sinh ngau nhien 20 ky tu (secrets).
 # KHONG tai lai neu da co. KHONG cai gi bang apt/npm.
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -99,35 +98,8 @@ PY
 }
 
 # --- mat khau terminal ---
-# Uu tien mat khau CO DINH trong terminal-pass.env: may local (arena-lab) chi biet
-# mot mat khau (TTYD_FIXED_PASS) => moi box moi phai dung CHUNG mat khau do de may
-# local tu dong dang nhap va tu cai lai duoc lop API. Khong co file -> sinh ngau
-# nien nhu cu (kit van chay duoc khi clone ban chua co file).
-FIXED_PASS=""
-# FALLBACK: /mnt/oss/qwenapi/kit/ la ban chuan do may local day vao (sot qua
-# recycle). Box MOI (clone kit moi, workspace rong) thi thu muc kit cua workspace
-# CHUA co file secret => can copy tu /mnt/oss truoc khi doc.
-if [ ! -f terminal-pass.env ] && [ -f /mnt/oss/qwenapi/kit/terminal-pass.env ]; then
-  cp -f /mnt/oss/qwenapi/kit/terminal-pass.env ./terminal-pass.env 2>/dev/null \
-    && chmod 600 ./terminal-pass.env 2>/dev/null \
-    && echo "  da lay terminal-pass.env tu /mnt/oss/qwenapi/kit"
-fi
-if [ ! -f arena-push.env ] && [ -f /mnt/oss/qwenapi/kit/arena-push.env ]; then
-  cp -f /mnt/oss/qwenapi/kit/arena-push.env ./arena-push.env 2>/dev/null \
-    && chmod 600 ./arena-push.env 2>/dev/null \
-    && echo "  da lay arena-push.env tu /mnt/oss/qwenapi/kit (box se tu bao URL)"
-fi
-if [ -f terminal-pass.env ]; then
-  FIXED_PASS="$(grep -E '^TERMINAL_PASS=' terminal-pass.env | tail -1 | cut -d= -f2- || true)"
-  FIXED_PASS="$(printf '%s' "$FIXED_PASS" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
-  # Placeholder trong file mau = mat khau CHUA duoc cau hinh -> coi nhu khong co
-  case "$FIXED_PASS" in
-    ""|REPLACE_ME|REPLACE_ME2|"<"*">"*|"chang-me"*|"CHANG_ME"*)
-      echo "[!] terminal-pass.env co gia tri PLACEHOLDER -> bo qua, dung mat khau sinh ngau nhien"
-      FIXED_PASS=""
-      ;;
-  esac
-fi
+# Moi box mot mat khau rieng, sinh ngau nhien 20 ky tu (secrets). Khong dung
+# mat khau dung chung giữa các box.
 
 mask() {  # hien 4 ky tu dau + 4 ky tu cuoi -> KHONG in mat khau day du
   local v="$1"
@@ -142,18 +114,9 @@ else
   if [ "$NEW_PASS" = "1" ]; then
     echo "terminal.env: --new-pass -> GHI DE: mat khau moi (cong giu nguyen)"
   fi
-  if [ -n "$FIXED_PASS" ]; then
-    PASS="$FIXED_PASS"
-    if [ "$NEW_PASS" = "1" ]; then
-      echo "terminal.env: mat khau terminal = mat khau CO DINH (terminal-pass.env)"
-    else
-      echo "terminal.env: dung mat khau CO DINH (terminal-pass.env)"
-    fi
-  else
-    # >= 20 ky tu (chu+so) — 6 chu so thi do duoc; terminal public tren Internet
-    PASS="$(python3 -c "import secrets,string;a=string.ascii_letters+string.digits;print(''.join(secrets.choice(a) for _ in range(20)))")"
-    echo "terminal.env: khong co terminal-pass.env -> sinh mat khau NGAU NHIEN (20 ky tu)"
-  fi
+  # >= 20 ky tu (chu+so) — 6 chu so thi do duoc; terminal public tren Internet
+  PASS="$(python3 -c "import secrets,string;a=string.ascii_letters+string.digits;print(''.join(secrets.choice(a) for _ in range(20)))")"
+  echo "terminal.env: sinh mat khau NGAU NHIEN (20 ky tu, rieng cho box nay)"
   if [ "$NEW_PASS" = "1" ] && [ -f terminal.env ]; then
     # Giu cong cua chinh bo kit (ttyd cu cua ta dang giu port do) => URL khong doi.
     # Neu port do bi he khac chiem, keepalive.py se tu day sang cong trong ke tiep.
@@ -248,9 +211,13 @@ if warn:
 PY
 
 echo "== xong bootstrap =="
-echo "Buoc tiep — CHAY DUNG MOT LENH:"
-echo "  bash setup.sh"
-echo ""
-echo "  setup.sh bat supervisor, cho quick tunnel len, kiem chung va in ra"
-echo "  4 dong: TUNNEL_URL / TUNNEL_USER / TUNNEL_PASS / VERIFY."
-echo "  (xem README.md de biet them)"
+# Duong dan TUYET DOI cua thu muc kit: agent lay chinh dong nay lam `cwd` cho
+# start_process (khong ton 1 lenh shell "pwd" nao).
+KIT_ABS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+echo "KIT_DIR=$KIT_ABS"
+mkdir -p "$KIT_ABS/logs" 2>/dev/null || true
+printf '%s\n' "$KIT_ABS" > "$KIT_ABS/logs/kit-path.txt" 2>/dev/null || true
+echo "Buoc tiep (chi 2 buoc, dung tool start_process cua agent):"
+echo "  1) start_process(name=\"Terminal supervisor\", cwd=\"$KIT_ABS\", command=\"exec python3 -u keepalive.py\", startup_wait=25)"
+echo "  2) sau ~30s: cat logs/current-url.txt terminal.env   -> bao 4 dong (PROMPT.md muc C)"
+echo "  (KHONG can verify.py/doctor.sh: may local tu kiem chung)"

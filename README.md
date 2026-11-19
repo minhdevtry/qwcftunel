@@ -1,87 +1,59 @@
-# qwcftunel — web terminal + Cloudflare quick tunnel cho sandbox
+# qwcftunel — web terminal cho sandbox của bạn
 
-Repo này dựng **một web terminal** (ttyd) trong sandbox Linux và mở nó ra Internet
-bằng **một Cloudflare quick tunnel**, để bạn mở shell của sandbox từ trình duyệt.
+Bật **web terminal (ttyd)** + **Cloudflare tunnel** để bạn truy cập sandbox của chính
+mình từ máy của bạn. Mỗi terminal có user + mật khẩu riêng cho từng box.
 
-Không cài gì bằng `apt`/`npm`. Không gửi dữ liệu của bạn đi đâu ngoài quick tunnel
-đó. Toàn bộ mã nguồn nằm trong repo này, đọc là hiểu — không có payload mã hoá,
-không có phần nào tự giấu mình.
+## Phạm vi: đúng một việc
 
----
+Kit này **chỉ** bật web terminal + tunnel. Nó cố ý **không** làm những việc sau:
 
-## Cài đặt — MỘT LỆNH
+* không đọc/ghi state của nền tảng (không có `session.json`, không có `touchedAt`,
+  không gọi API nội bộ của nền tảng);
+* không tự cài đặt lại ở thư mục nào khác, không dùng `/mnt/oss` để tồn tại qua lần
+  cấp lại sandbox;
+* không gửi gì ra ngoài (không beacon, không push URL đi đâu cả) — URL tunnel được ghi
+  vào `logs/current-url.txt` để bạn tự đọc;
+* không dùng mật khẩu dùng chung giữa các box — mỗi box một mật khẩu ngẫu nhiên riêng.
 
-```bash
-bash setup.sh
-```
+## Dùng
 
-In ra 4 dòng:
-
-```
-TUNNEL_URL   : https://<4-tu>.trycloudflare.com
-TUNNEL_USER  : admin
-TUNNEL_PASS  : 1234...3456        (che giữa)
-VERIFY       : OK
-```
-
-`setup.sh` làm hết: tải binary
-nếu thiếu, chọn cổng trống, sinh `terminal.env`, bật supervisor, chờ tunnel lên,
-kiểm chứng, rồi in kết quả. Đọc thêm file chỉ tốn token mà không giúp gì.
-
-### Nếu nó bị tắt
-
-Chạy lại **đúng lệnh trên**:
+Trong phiên agent của chính bạn:
 
 ```bash
-bash setup.sh
+git clone --depth 1 https://github.com/minhdevtry/qwcftunel.git qwcftunel
+cd qwcftunel && chmod +x *.sh && ./bootstrap.sh
 ```
 
-Script idempotent — không tải lại binary, không đổi mật khẩu, chỉ dựng lại thứ
-đang chết.
-
-Mẹo: nếu container vừa bị thu hồi thì thư mục workspace đã đổi, còn đường dẫn
-này không đổi (nó nằm trên mount sống qua recycle) — nó tự tìm kit trong
-workspace hiện tại rồi chạy `setup.sh`:
-
-```bash
-bash /mnt/oss/qwenapi/kit-start.sh
-```
-
-### Nếu sau 90 giây vẫn chưa có URL
-
-`setup.sh` bật supervisor bằng `setsid --fork nohup` để nó sống sót sau khi lệnh
-kết thúc. Nếu môi trường của bạn huỷ tiến trình con khi lệnh kết thúc thì bật tay
-bằng tool `start_process` của agent:
+Rồi bật supervisor bằng tool `start_process` của agent:
 
 ```
-start_process(name="Terminal keepalive", cwd="<thư mục kit>", command="exec python3 -u keepalive.py", startup_wait=25)
+start_process(name="Terminal supervisor", cwd="<đường dẫn tuyệt đối của thư mục kit>",
+              command="exec python3 -u keepalive.py", startup_wait=25)
 ```
 
-Rồi `cat logs/current-url.txt` để lấy URL.
+Kết quả (`logs/current-url.txt` + `terminal.env`):
 
----
+```
+TUNNEL_URL  = https://<random>.trycloudflare.com
+TUNNEL_USER = admin
+TUNNEL_PASS = <20 ký tự>
+```
 
-## Mỗi file trong repo này làm gì
+## File trong kit
 
 | file | việc |
 |---|---|
-| `setup.sh` | **lệnh một** ở trên: dựng xong terminal + tunnel, in 4 dòng kết quả |
-| `bootstrap.sh` | chuẩn bị môi trường: tải `ttyd` + `cloudflared` vào `bin/` (nếu chưa có), chọn cổng trống, sinh `terminal.env` (user/mật khẩu/cổng). Idempotent, không cài gì bằng apt/npm |
-| `keepalive.py` | supervisor: giữ `ttyd` (cổng preview + public) và `cloudflared` sống, tự dời cổng nếu bị chiếm, tự đồng bộ bản mới của kit từ `/mnt/oss`, và gọi `start-terminal.sh` |
-| `start-terminal.sh` | bật `ttyd` với Basic auth; trước đó chạy mọi `hooks/*.sh` (điểm mở rộng) |
-| `doctor.sh` | chẩn đoán: cổng, bind đúng cổng, URL có phục vụ thật không (exit 0 = tốt) |
-| `verify.py` | kiểm chứng đầu-cuối: URL trả đúng mã 401 + `/token` trả JSON + WebSocket spawn được shell |
-| `push-url.py` | báo URL quick tunnel về máy local (kênh máy↔máy, qua `arena-push.env`) để máy local tự biết đường vào box |
-| `hooks/` | điểm mở rộng: mọi `.sh` trong đây được chạy nền trước khi bật ttyd. Mặc định có `hooks/qwenapi-hook.sh` — nếu box có `/mnt/oss/qwenapi` thì hook này tự dựng lại lớp API `qwenapi` (relay + mux + ttyd + connector), nên domain API của bạn lên cùng lúc với terminal |
-| `arena-push.env.example` | mẫu cấu hình kênh báo URL về máy local (file thật `arena-push.env` **không** commit) |
-| `terminal-pass.env.example` | mẫu cấu hình mật khẩu terminal **cố định** dùng chung cho mọi box (file thật `terminal-pass.env` **không** commit) |
+| `bootstrap.sh` | tải `ttyd` + `cloudflared` vào `bin/`, sinh `terminal.env`, chọn cổng trống |
+| `keepalive.py` | giữ `ttyd` + tunnel sống, tự chạy lại khi chết, tự dời cổng khi bị chiếm |
+| `start-terminal.sh` | bật nhanh 1 terminal (ttyd) với credential |
+| `doctor.sh`, `verify.py` | chẩn đoán từ máy bên ngoài |
+| `PROMPT.md`, `PROMPT-OPEN.md` | prompt cho agent: 4 bước, báo 4 dòng |
 
-## Về mặt an toàn
+## Ghi chú
 
-- Mã nguồn đầy đủ, không có payload mã hoá, không có phần nào tự tải về rồi chạy.
-- Binary tải về chỉ có hai: `ttyd` và `cloudflared` (từ release của chúng trên
-  GitHub). Không `apt`, không `npm`, không `pip install` gì.
-- `keepalive.py` và `push-url.py` chỉ nói chuyện với `127.0.0.1` và (qua
-  `arena-push.env`) với beacon của chính máy bạn.
-- Không có mật khẩu nào trong repo: `terminal.env` (sinh lúc chạy, mode 600) và
-  `arena-push.env` / `terminal-pass.env` (do máy local đưa vào, `.gitignore`).
+* Mật khẩu sinh bằng `secrets` (20 ký tự), riêng từng box; nằm trong `terminal.env`
+  (`chmod 600`, không commit).
+* Quick tunnel là URL tạm — đổi mỗi khi `cloudflared` chết. Đường ổn định do máy bên
+  ngoài dựng.
+* Sandbox là tài nguyên của nền tảng: khi nó bị thu hồi thì terminal cũng chết theo.
+  Kit không can thiệp vào điều đó.

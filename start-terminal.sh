@@ -13,14 +13,6 @@ if [ -n "${TTYD_CREDENTIAL:-}" ]; then
   esac
   AUTH=(-c "$TTYD_CREDENTIAL")
 fi
-# Hook TUY CHON (vd: lop API qwenapi can dung lai relay/mux/connector khi box
-# recycle). Neu thu muc hooks/ co file .sh => chay nen truoc khi bat ttyd.
-# Khong bat buoc: kit van chay binh thuong khi khong co hooks/.
-for h in "$PWD"/hooks/*.sh; do
-  [ -f "$h" ] || continue
-  ( setsid --fork nohup bash "$h" >/dev/null 2>&1 </dev/null & ) || true
-done
-
 exec ./bin/ttyd -i 0.0.0.0 -p "$PORT" -W -w "$PWD" -T xterm-256color \
   -t fontSize=14 -t scrollback=8000 -t cursorBlink=true -t titleFixed='Sandbox Terminal' \
   "${AUTH[@]}" bash -l
